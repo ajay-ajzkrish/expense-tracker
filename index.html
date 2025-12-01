@@ -1,34 +1,3 @@
-// Replace these with your values
-const SHEET_ID = '1vMtpUKaPViRbr0_XcC65VyRMOVJioLpmORKw0cskRPE'; // From Google Sheet URL
-const API_KEY = 'AIzaSyAg70BClb1K8g3vsqKV8IoWXXIao35n7DU';
-
-// Function to save to Google Sheets
-async function saveToGoogleSheets(expense) {
-    const sheetName = 'Sheet1';
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheetName}!A:D:append?valueInputOption=USER_ENTERED&key=${API_KEY}`;
-    
-    const body = {
-        values: [[
-            new Date().toLocaleDateString(),
-            expense.amount,
-            expense.category,
-            expense.description
-        ]]
-    };
-    
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        if (response.ok) console.log('Saved to Google Sheets ✅');
-    } catch (error) {
-        console.error('Error:', error);
-    }
-}
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -305,8 +274,6 @@ async function saveToGoogleSheets(expense) {
           <option>Transportation</option>
           <option>Entertainment</option>
           <option>Healthcare</option>
-          <option>Need</option>
-          <option>Want</option>
           <option>Other</option>
         </select>
       </div>
@@ -315,6 +282,9 @@ async function saveToGoogleSheets(expense) {
       </div>
       <div class="success-msg" id="success-msg" style="display:none"></div>
       <div class="error-msg" id="error-msg" style="display:none"></div>
+      <div style="grid-column: 1 / -1; font-size: 0.85rem; color: #666; margin-top: -8px;">
+        💾 Local storage is enabled. Google Sheets sync: <span id="sheets-status">Optional (configure with API key)</span>
+      </div>
     </form>
     <div class="summary" id="stats-summary">
       <div>Total expenses: <span id="total-count">0</span></div>
@@ -362,15 +332,91 @@ async function saveToGoogleSheets(expense) {
       </div>
     </div>
     <div style="text-align:center; margin-top:28px">
-      <!-- <img src="https://ppl-ai-code-interpreter-files.s3.amazonaws.com/web/direct-files/74ba0ad205628519f114d5ad620df67c/a6773ed8-3c22-4e82-b2d8-fe9a5e7cdd80/a2eb50f3.png"
+      <img src="https://ppl-ai-code-interpreter-files.s3.amazonaws.com/web/direct-files/74ba0ad205628519f114d5ad620df67c/a6773ed8-3c22-4e82-b2d8-fe9a5e7cdd80/a2eb50f3.png"
            alt="Expense Tracker App Workflow"
-           style="width:230px;max-width:100%;border-radius:8px;box-shadow:0 3px 20px rgba(32,128,144,0.10);margin-bottom:10px;" /> -->
-      <div style="font-size:0.92rem;color:#aaa;margin-top:3px;margin-bottom:12px;"></div>
+           style="width:230px;max-width:100%;border-radius:8px;box-shadow:0 3px 20px rgba(32,128,144,0.10);margin-bottom:10px;" />
+      <div style="font-size:0.92rem;color:#aaa;margin-top:3px;margin-bottom:12px;">Expense Tracker App Workflow</div>
     </div>
   </div>
   <div id="modal-root"></div>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
+    // ========================================
+    // GOOGLE SHEETS API CONFIGURATION
+    // ========================================
+    // INSTRUCTIONS:
+    // 1. Create a Google Sheet with columns: Date | Amount | Category | Description
+    // 2. Get your Sheet ID from the URL: https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID_HERE/edit
+    // 3. Create an API Key in Google Cloud Console with Sheets API enabled
+    // 4. Replace the values below with your actual credentials
+    
+    const GOOGLE_SHEETS_CONFIG = {
+      SHEET_ID: '1vMtpUKaPViRbr0_XcC65VyRMOVJioLpmORKw0cskRPE',  // Replace with your actual Google Sheet ID
+      API_KEY: 'AIzaSyAg70BClb1K8g3vsqKV8IoWXXIao35n7DU',     // Replace with your actual API Key
+      SHEET_NAME: 'Sheet1',             // Change if your sheet has a different name
+      ENABLED: false                     // Set to true after adding credentials
+    };
+    
+    // Example (commented out):
+    // SHEET_ID: '1AbCdEfGhIjKlMnOpQrStUvWxYz1234567890'
+    // API_KEY: 'AIzaSyAaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQq'
+    
+    /**
+     * Save expense to Google Sheets
+     * @param {Object} expense - The expense object to save
+     */
+    async function saveToGoogleSheets(expense) {
+      // Check if Google Sheets is configured
+      if (!GOOGLE_SHEETS_CONFIG.ENABLED) {
+        console.log('ℹ️ Google Sheets sync is disabled. Enable it by setting ENABLED to true.');
+        return;
+      }
+      
+      if (GOOGLE_SHEETS_CONFIG.SHEET_ID === 'YOUR_SHEET_ID_HERE' || 
+          GOOGLE_SHEETS_CONFIG.API_KEY === 'YOUR_API_KEY_HERE') {
+        console.warn('⚠️ Google Sheets not configured. Please add your SHEET_ID and API_KEY.');
+        return;
+      }
+      
+      try {
+        // Format date as YYYY-MM-DD
+        const formattedDate = expense.date;
+        
+        // Prepare the row data
+        const values = [
+          [formattedDate, expense.amount, expense.category, expense.description]
+        ];
+        
+        // Google Sheets API endpoint
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.SHEET_ID}/values/${GOOGLE_SHEETS_CONFIG.SHEET_NAME}:append?valueInputOption=RAW&key=${GOOGLE_SHEETS_CONFIG.API_KEY}`;
+        
+        // Make API call
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            values: values
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error?.message || 'Failed to save to Google Sheets');
+        }
+        
+        const data = await response.json();
+        console.log('✅ Successfully saved to Google Sheets:', data);
+        showSuccess('Expense added & synced to Google Sheets!');
+        
+      } catch (error) {
+        console.error('❌ Error saving to Google Sheets:', error);
+        console.warn('⚠️ Expense saved locally, but Google Sheets sync failed.');
+        // Don't show error to user - already showed success for local save
+      }
+    }
+    
     // ---- EXPENSE TRACKER LOGIC ----
     const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 });
     const LS_KEY = 'expenses-list-v1';
@@ -603,18 +649,24 @@ async function saveToGoogleSheets(expense) {
         showError('Please select a category'); form.category.focus(); return;
       }
       // Insert
-      expenses.push({
+      const newExpense = {
         id: 'id-'+Math.random().toString(36).substr(2,8)+Date.now(),
         date: getTodayStr(),
         amount: Number(Number(amount).toFixed(2)),
         category: cat,
         description: desc
-      });
+      };
+      
+      // Save to local storage first (primary storage)
+      expenses.push(newExpense);
       saveExpenses();
       renderTable();
       renderStats();
       clearForm();
       showSuccess('Expense added!');
+      
+      // Then attempt to sync to Google Sheets (secondary/backup storage)
+      saveToGoogleSheets(newExpense);
     };
     clearAllBtn.onclick = handleClearAll;
     // ------- Init ---------
@@ -623,6 +675,18 @@ async function saveToGoogleSheets(expense) {
       updateSortBtn();
       renderTable();
       renderStats();
+      
+      // Update Google Sheets status indicator
+      const statusEl = document.getElementById('sheets-status');
+      if (GOOGLE_SHEETS_CONFIG.ENABLED && 
+          GOOGLE_SHEETS_CONFIG.SHEET_ID !== 'YOUR_SHEET_ID_HERE' && 
+          GOOGLE_SHEETS_CONFIG.API_KEY !== 'YOUR_API_KEY_HERE') {
+        statusEl.textContent = '✅ Enabled';
+        statusEl.style.color = '#21916d';
+        statusEl.style.fontWeight = '600';
+      } else {
+        statusEl.textContent = 'Optional (configure with API key)';
+      }
     }
     main();
   </script>
