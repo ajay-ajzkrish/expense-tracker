@@ -1,3 +1,34 @@
+// Replace these with your values
+const SHEET_ID = 'YOUR_SHEET_ID_HERE'; // From Google Sheet URL
+const API_KEY = 'YOUR_API_KEY_HERE';
+
+// Function to save to Google Sheets
+async function saveToGoogleSheets(expense) {
+    const sheetName = 'Sheet1';
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheetName}!A:D:append?valueInputOption=USER_ENTERED&key=${API_KEY}`;
+    
+    const body = {
+        values: [[
+            new Date().toLocaleDateString(),
+            expense.amount,
+            expense.category,
+            expense.description
+        ]]
+    };
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (response.ok) console.log('Saved to Google Sheets ✅');
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
