@@ -242,6 +242,94 @@
       margin: 20px 8px 0 8px;
       font-size: 1rem;
     }
+    .debug-panel {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #fff;
+      border: 2px solid var(--primary-teal);
+      border-radius: 10px;
+      padding: 16px;
+      max-width: 320px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      z-index: 50;
+      font-size: 0.9rem;
+      max-height: 70vh;
+      overflow-y: auto;
+      display: none;
+    }
+    .debug-panel.active {
+      display: block;
+    }
+    .debug-toggle {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--primary-teal);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      z-index: 49;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 12px rgba(32,128,144,0.3);
+    }
+    .debug-toggle:hover {
+      background: var(--primary-teal-dark);
+    }
+    .debug-status {
+      padding: 8px;
+      border-radius: 6px;
+      background: #f0f0f0;
+      margin: 8px 0;
+      font-family: monospace;
+      font-size: 0.85rem;
+      word-break: break-all;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .debug-status.success {
+      background: #e5faf0;
+      color: var(--success-green);
+    }
+    .debug-status.error {
+      background: #ffeaea;
+      color: var(--error-red);
+    }
+    .debug-btn {
+      background: var(--primary-teal);
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      margin: 4px 4px 4px 0;
+      transition: background 150ms;
+    }
+    .debug-btn:hover {
+      background: var(--primary-teal-dark);
+    }
+    .debug-btn-danger {
+      background: var(--accent-orange);
+    }
+    .debug-btn-danger:hover {
+      background: #c34720;
+    }
+    .debug-input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border-gray);
+      border-radius: 4px;
+      font-size: 0.85rem;
+      margin: 8px 0;
+      font-family: monospace;
+    }
     @media (max-width: 640px){
       .container {padding: 10px; }
       .summary, .category-summary {padding: 10px;}
@@ -249,6 +337,11 @@
       .clear-all-btn {float: none; display: block; margin-bottom: 12px;}
       .category-summary, .summary {font-size: 0.98rem;}
       .expense-table th, .expense-table td { font-size: 0.99rem; }
+      .debug-panel {
+        max-width: calc(100vw - 40px);
+        right: 20px;
+        bottom: 80px;
+      }
     }
   </style>
 </head>
@@ -283,7 +376,7 @@
       <div class="success-msg" id="success-msg" style="display:none"></div>
       <div class="error-msg" id="error-msg" style="display:none"></div>
       <div style="grid-column: 1 / -1; font-size: 0.85rem; color: #666; margin-top: -8px;">
-        💾 Local storage is enabled. Google Sheets sync: <span id="sheets-status">Optional (configure with API key)</span>
+        💾 Local storage: <span id="local-status" style="color: #21916d; font-weight: 600;">✅ Active</span> | Google Sheet: <span id="sheets-status">Optional (click 🔧 to configure)</span>
       </div>
     </form>
     <div class="summary" id="stats-summary">
@@ -331,92 +424,224 @@
         <canvas id="category-chart"></canvas>
       </div>
     </div>
-    <div style="text-align:center; margin-top:28px">
-      <img src="https://ppl-ai-code-interpreter-files.s3.amazonaws.com/web/direct-files/74ba0ad205628519f114d5ad620df67c/a6773ed8-3c22-4e82-b2d8-fe9a5e7cdd80/a2eb50f3.png"
-           alt="Expense Tracker App Workflow"
-           style="width:230px;max-width:100%;border-radius:8px;box-shadow:0 3px 20px rgba(32,128,144,0.10);margin-bottom:10px;" />
-      <div style="font-size:0.92rem;color:#aaa;margin-top:3px;margin-bottom:12px;">Expense Tracker App Workflow</div>
+  </div>
+
+  <!-- Debug Panel Toggle Button -->
+  <button class="debug-toggle" id="debug-toggle" title="Google Sheet Configuration">🔧</button>
+  
+  <!-- Debug Panel -->
+  <div class="debug-panel" id="debug-panel">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <strong>🔧 Google Sheet Setup</strong>
+      <button id="close-debug" style="padding: 4px 8px; font-size: 0.85rem; border: none; background: none; color: var(--primary-teal); cursor: pointer; font-weight: bold;">✕</button>
+    </div>
+    <div style="font-size: 0.85rem; line-height: 1.6;">
+      <strong style="display: block; margin-bottom: 8px;">📋 Configuration:</strong>
+      <div class="debug-status">
+        Script URL: <span id="debug-script-url">Not configured</span>
+      </div>
+      
+      <strong style="display: block; margin: 12px 0 8px 0;">🔗 Enter Deployment URL:</strong>
+      <textarea class="debug-input" id="script-url-input" placeholder="Paste your Google Apps Script deployment URL here..." style="min-height: 50px; resize: vertical;"></textarea>
+      <button class="debug-btn" id="save-url-btn">Save URL</button>
+      <button class="debug-btn debug-btn-danger" id="clear-url-btn">Clear</button>
+      
+      <strong style="display: block; margin: 12px 0 8px 0;">🧪 Test Connection:</strong>
+      <button class="debug-btn" id="test-script-btn">Test Script</button>
+      <div class="debug-status" id="test-result" style="display: none;"></div>
+      
+      <strong style="display: block; margin: 12px 0 8px 0;">📊 Last Response:</strong>
+      <div class="debug-status" id="last-response" style="max-height: 150px; overflow-y: auto;">No request yet</div>
+      
+      <div style="margin-top: 12px; padding: 10px; background: #f9f9f9; border-radius: 4px; font-size: 0.8rem;">
+        <strong>Need help?</strong>
+        <ol style="margin: 8px 0; padding-left: 18px;">
+          <li>Create Google Apps Script in your Sheet</li>
+          <li>Deploy as Web app (Anyone access)</li>
+          <li>Copy deployment URL</li>
+          <li>Paste here and click Save</li>
+          <li>Click Test Script to verify</li>
+        </ol>
+      </div>
     </div>
   </div>
+
   <div id="modal-root"></div>
+  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     // ========================================
-    // GOOGLE SHEETS API CONFIGURATION
+    // GOOGLE APPS SCRIPT CONFIGURATION
     // ========================================
-    // INSTRUCTIONS:
-    // 1. Create a Google Sheet with columns: Date | Amount | Category | Description
-    // 2. Get your Sheet ID from the URL: https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID_HERE/edit
-    // 3. Create an API Key in Google Cloud Console with Sheets API enabled
-    // 4. Replace the values below with your actual credentials
-    
-    const GOOGLE_SHEETS_CONFIG = {
-      SHEET_ID: '1vMtpUKaPViRbr0_XcC65VyRMOVJioLpmORKw0cskRPE',  // Replace with your actual Google Sheet ID
-      API_KEY: 'AIzaSyAg70BClb1K8g3vsqKV8IoWXXIao35n7DU',     // Replace with your actual API Key
-      SHEET_NAME: 'Sheet1',             // Change if your sheet has a different name
-      ENABLED: true                     // Set to true after adding credentials
-    };
-    
-    // Example (commented out):
-    // SHEET_ID: '1AbCdEfGhIjKlMnOpQrStUvWxYz1234567890'
-    // API_KEY: 'AIzaSyAaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQq'
-    
+    let GOOGLE_APPS_SCRIPT_URL = localStorage.getItem('gasScriptUrl') || '';
+    let lastApiResponse = 'No request yet';
+
     /**
-     * Save expense to Google Sheets
-     * @param {Object} expense - The expense object to save
+     * Save expense to Google Sheet via Apps Script
      */
     async function saveToGoogleSheets(expense) {
-      // Check if Google Sheets is configured
-      if (!GOOGLE_SHEETS_CONFIG.ENABLED) {
-        console.log('ℹ️ Google Sheets sync is disabled. Enable it by setting ENABLED to true.');
+      if (!GOOGLE_APPS_SCRIPT_URL) {
+        console.log('ℹ️ Google Apps Script URL not configured. Expense saved locally only.');
         return;
       }
-      
-      if (GOOGLE_SHEETS_CONFIG.SHEET_ID === 'YOUR_SHEET_ID_HERE' || 
-          GOOGLE_SHEETS_CONFIG.API_KEY === 'YOUR_API_KEY_HERE') {
-        console.warn('⚠️ Google Sheets not configured. Please add your SHEET_ID and API_KEY.');
-        return;
-      }
-      
+
       try {
-        // Format date as YYYY-MM-DD
-        const formattedDate = expense.date;
+        console.log('📤 Sending expense to Google Sheet...');
         
-        // Prepare the row data
-        const values = [
-          [formattedDate, expense.amount, expense.category, expense.description]
-        ];
-        
-        // Google Sheets API endpoint
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.SHEET_ID}/values/${GOOGLE_SHEETS_CONFIG.SHEET_NAME}:append?valueInputOption=RAW&key=${GOOGLE_SHEETS_CONFIG.API_KEY}`;
-        
-        // Make API call
-        const response = await fetch(url, {
+        const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify({
-            values: values
+            date: expense.date,
+            amount: expense.amount,
+            category: expense.category,
+            description: expense.description
           })
         });
+
+        const result = await response.json();
+        lastApiResponse = JSON.stringify(result, null, 2);
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error?.message || 'Failed to save to Google Sheets');
+        if (result.status === 'success') {
+          console.log('✅ Saved to Google Sheet!', result);
+          showSuccess('✅ Expense synced to Google Sheet!');
+          document.getElementById('last-response').textContent = lastApiResponse;
+          updateSheetsStatus();
+        } else {
+          throw new Error(result.message || 'Unknown error');
         }
-        
-        const data = await response.json();
-        console.log('✅ Successfully saved to Google Sheets:', data);
-        showSuccess('Expense added & synced to Google Sheets!');
-        
       } catch (error) {
-        console.error('❌ Error saving to Google Sheets:', error);
-        console.warn('⚠️ Expense saved locally, but Google Sheets sync failed.');
-        // Don't show error to user - already showed success for local save
+        console.error('❌ Error:', error.message);
+        lastApiResponse = `ERROR: ${error.message}`;
+        document.getElementById('last-response').textContent = lastApiResponse;
+        console.warn('⚠️ Expense saved locally. Google Sheet sync failed.');
       }
     }
-    
+
+    /**
+     * Test Apps Script connection
+     */
+    async function testScriptConnection() {
+      const testBtn = document.getElementById('test-script-btn');
+      const testResult = document.getElementById('test-result');
+      
+      if (!GOOGLE_APPS_SCRIPT_URL) {
+        testResult.style.display = 'block';
+        testResult.textContent = '❌ No URL configured. Enter the URL first.';
+        testResult.className = 'debug-status error';
+        return;
+      }
+
+      testBtn.disabled = true;
+      testBtn.textContent = 'Testing...';
+      testResult.style.display = 'block';
+      testResult.textContent = '⏳ Testing connection...';
+      testResult.className = 'debug-status';
+
+      try {
+        console.log('🧪 Testing Google Apps Script...');
+        
+        const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            date: '2025-12-01',
+            amount: 0,
+            category: 'Test',
+            description: 'Connection test'
+          })
+        });
+
+        const result = await response.json();
+        lastApiResponse = JSON.stringify(result, null, 2);
+        document.getElementById('last-response').textContent = lastApiResponse;
+
+        if (result.status === 'success') {
+          testResult.textContent = `✅ Connected! Script is working perfectly.`;
+          testResult.className = 'debug-status success';
+          console.log('✅ Script Connection successful!');
+        } else {
+          throw new Error(result.message || 'Unknown error');
+        }
+      } catch (error) {
+        testResult.textContent = `❌ Connection failed: ${error.message}`;
+        testResult.className = 'debug-status error';
+        console.error('❌ Script Test Failed:', error);
+      } finally {
+        testBtn.disabled = false;
+        testBtn.textContent = 'Test Script';
+      }
+    }
+
+    /**
+     * Save Google Apps Script URL
+     */
+    function saveScriptUrl() {
+      const url = document.getElementById('script-url-input').value.trim();
+      
+      if (!url) {
+        alert('Please enter the Google Apps Script deployment URL');
+        return;
+      }
+
+      if (!url.includes('script.google.com')) {
+        alert('Invalid URL. Make sure you copied the correct deployment URL from Google Apps Script.');
+        return;
+      }
+
+      GOOGLE_APPS_SCRIPT_URL = url;
+      localStorage.setItem('gasScriptUrl', url);
+      updateDebugPanel();
+      showSuccess('✅ Script URL saved!');
+      console.log('✅ Google Apps Script URL configured');
+    }
+
+    /**
+     * Clear Google Apps Script URL
+     */
+    function clearScriptUrl() {
+      GOOGLE_APPS_SCRIPT_URL = '';
+      localStorage.removeItem('gasScriptUrl');
+      document.getElementById('script-url-input').value = '';
+      updateDebugPanel();
+      showSuccess('✅ URL cleared');
+      console.log('✅ Google Apps Script URL cleared');
+    }
+
+    /**
+     * Update debug panel display
+     */
+    function updateDebugPanel() {
+      const urlEl = document.getElementById('debug-script-url');
+      const input = document.getElementById('script-url-input');
+      
+      if (GOOGLE_APPS_SCRIPT_URL) {
+        const url = GOOGLE_APPS_SCRIPT_URL;
+        const shortUrl = url.substring(0, 30) + '...' + url.substring(url.length - 15);
+        urlEl.textContent = shortUrl;
+        input.value = GOOGLE_APPS_SCRIPT_URL;
+      } else {
+        urlEl.textContent = 'Not configured';
+        input.value = '';
+      }
+
+      updateSheetsStatus();
+    }
+
+    /**
+     * Update sheets status indicator
+     */
+    function updateSheetsStatus() {
+      const statusEl = document.getElementById('sheets-status');
+      if (GOOGLE_APPS_SCRIPT_URL) {
+        statusEl.textContent = '✅ Connected';
+        statusEl.style.color = '#21916d';
+        statusEl.style.fontWeight = '600';
+      } else {
+        statusEl.textContent = 'Optional (click 🔧 to configure)';
+        statusEl.style.color = '#999';
+        statusEl.style.fontWeight = 'normal';
+      }
+    }
+
     // ---- EXPENSE TRACKER LOGIC ----
     const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 });
     const LS_KEY = 'expenses-list-v1';
@@ -424,15 +649,15 @@
 
     // --- State ---
     let expenses = [];
-    let currentSort = 'date'; // or 'amount'
-    let sortDir = -1; // -1 = desc, 1 = asc
+    let currentSort = 'date';
+    let sortDir = -1;
     let filterCategory = '';
+
     // --- Elements ---
     const tableBody = document.querySelector('#expense-table tbody');
     const totalCountEl = document.getElementById('total-count');
     const totalAmountEl = document.getElementById('total-amount');
     const highestCategoryEl = document.getElementById('highest-category');
-    const addBtn = document.getElementById('add-btn');
     const form = document.getElementById('expense-form');
     const successMsg = document.getElementById('success-msg');
     const errorMsg = document.getElementById('error-msg');
@@ -441,10 +666,17 @@
     const categoryFilter = document.getElementById('category-filter');
     const sortDateBtn = document.getElementById('sort-date');
     const sortAmountBtn = document.getElementById('sort-amount');
-    // Modal root
     const modalRoot = document.getElementById('modal-root');
 
-    // ---- Util ---
+    // Debug panel elements
+    const debugToggle = document.getElementById('debug-toggle');
+    const debugPanel = document.getElementById('debug-panel');
+    const closeDebugBtn = document.getElementById('close-debug');
+    const saveUrlBtn = document.getElementById('save-url-btn');
+    const clearUrlBtn = document.getElementById('clear-url-btn');
+    const testScriptBtn = document.getElementById('test-script-btn');
+
+    // --- Util ---
     function showSuccess(msg) {
       successMsg.textContent = msg;
       successMsg.style.display = 'block';
@@ -460,12 +692,12 @@
       return d.toISOString().slice(0,10);
     }
     function formatDate(str) {
-      // Input: 'YYYY-MM-DD'
       const [y,m,d] = str.split('-');
       return `${d}-${m}-${y}`;
     }
     function saveExpenses() {
-      window._expensesMemoryStorage = window._expensesMemoryStorage || {}; window._expensesMemoryStorage[LS_KEY] = JSON.stringify(expenses);
+      window._expensesMemoryStorage = window._expensesMemoryStorage || {};
+      window._expensesMemoryStorage[LS_KEY] = JSON.stringify(expenses);
     }
     function loadExpenses() {
       let data = window._expensesMemoryStorage && window._expensesMemoryStorage[LS_KEY];
@@ -519,13 +751,12 @@
     // ---- Stats and Chart ---
     let chartInstance = null;
     function renderStats() {
-      // Total
       const filtered = getFiltered();
       totalCountEl.textContent = filtered.length;
       const totalAmt = filtered.reduce((sum, item) => sum + Number(item.amount), 0);
       totalAmountEl.textContent = currencyFormatter.format(totalAmt);
-      // Highest category
-      let byCat = {}; filtered.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+Number(e.amount));
+      let byCat = {};
+      filtered.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+Number(e.amount));
       let maxCat = '-';
       let maxAmt = 0;
       for(const c of Object.keys(byCat)){
@@ -536,7 +767,6 @@
     }
 
     function renderPieChart(byCat) {
-      // keep order
       const labels = categoryList.filter(cat => byCat[cat] > 0);
       const data = labels.map(cat => byCat[cat]);
       if(chartInstance){chartInstance.destroy();}
@@ -600,12 +830,20 @@
         onCancel: closeModal
       });
     }
+
     // ---- Modal ---
     function openModal(opts) {
+      let content = '';
+      if (opts.customContent) {
+        content = opts.customContent;
+      } else {
+        content = `<div style='margin:12px 0 16px 0;'>${opts.desc||''}</div>`;
+      }
+      
       modalRoot.innerHTML = `<div class='modal-backdrop'>
         <div class='modal'>
           <div style='font-weight:600;font-size:1.1rem;'>${opts.title||''}</div>
-          <div style='margin:12px 0 16px 0;'>${opts.desc||''}</div>
+          ${content}
           <button class='btn ${opts.confirmClass||''}'>${opts.confirmText||'OK'}</button>
           <button class='btn btn-secondary'>Cancel</button>
         </div>
@@ -615,6 +853,7 @@
       box.querySelector('.btn-secondary').onclick = opts.onCancel || closeModal;
     }
     function closeModal(){modalRoot.innerHTML='';}
+
     // ---- Sort & Filter ---
     sortDateBtn.onclick = () => {currentSort='date';flipSortDir('date');updateSortBtn();renderTable();};
     sortAmountBtn.onclick = () => {currentSort='amount';flipSortDir('amount');updateSortBtn();renderTable();};
@@ -631,10 +870,10 @@
       renderTable();
       renderStats();
     };
-    // ----- Add Expense ----
+
+    // ---- Add Expense ----
     form.onsubmit = function(e) {
       e.preventDefault();
-      // Validate
       const amount = form.amount.value.trim();
       const desc = form.desc.value.trim();
       const cat = form.category.value;
@@ -648,7 +887,7 @@
       if(!cat){
         showError('Please select a category'); form.category.focus(); return;
       }
-      // Insert
+      
       const newExpense = {
         id: 'id-'+Math.random().toString(36).substr(2,8)+Date.now(),
         date: getTodayStr(),
@@ -657,36 +896,38 @@
         description: desc
       };
       
-      // Save to local storage first (primary storage)
       expenses.push(newExpense);
       saveExpenses();
       renderTable();
       renderStats();
       clearForm();
-      showSuccess('Expense added!');
+      showSuccess('Expense added locally! ✅');
       
-      // Then attempt to sync to Google Sheets (secondary/backup storage)
+      // Sync to Google Sheet
       saveToGoogleSheets(newExpense);
     };
     clearAllBtn.onclick = handleClearAll;
+
+    // ---- Debug Panel Controls ----
+    debugToggle.onclick = () => {
+      debugPanel.classList.toggle('active');
+      updateDebugPanel();
+    };
+    closeDebugBtn.onclick = () => {
+      debugPanel.classList.remove('active');
+    };
+    saveUrlBtn.onclick = saveScriptUrl;
+    clearUrlBtn.onclick = clearScriptUrl;
+    testScriptBtn.onclick = testScriptConnection;
+
     // ------- Init ---------
     function main(){
       expenses = loadExpenses();
       updateSortBtn();
       renderTable();
       renderStats();
-      
-      // Update Google Sheets status indicator
-      const statusEl = document.getElementById('sheets-status');
-      if (GOOGLE_SHEETS_CONFIG.ENABLED && 
-          GOOGLE_SHEETS_CONFIG.SHEET_ID !== 'YOUR_SHEET_ID_HERE' && 
-          GOOGLE_SHEETS_CONFIG.API_KEY !== 'YOUR_API_KEY_HERE') {
-        statusEl.textContent = '✅ Enabled';
-        statusEl.style.color = '#21916d';
-        statusEl.style.fontWeight = '600';
-      } else {
-        statusEl.textContent = 'Optional (configure with API key)';
-      }
+      updateDebugPanel();
+      console.log('✅ Expense Tracker initialized');
     }
     main();
   </script>
