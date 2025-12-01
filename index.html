@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple Expense Tracker</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      --primary-teal: #208090;
+      --primary-teal-dark: #16606a;
+      --secondary-gray: #f5f5f5;
+      --surface-white: #fff;
+      --text-dark: #333333;
+      --accent-orange: #FF6B4A;
+      --border-gray: #dadada;
+      --radius: 10px;
+      --space: 16px;
+      --font-main: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      --error-red: #c32020;
+      --success-green: #21916d;
+    }
+    html, body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-main);
+      background: var(--secondary-gray);
+      color: var(--text-dark);
+    }
+    .container {
+      max-width: 680px;
+      margin: var(--space) auto;
+      background: var(--surface-white);
+      padding: calc(var(--space) * 2);
+      border-radius: var(--radius);
+      box-shadow: 0px 2px 12px rgba(32,128,144,0.05);
+    }
+    h1 {
+      color: var(--primary-teal);
+      text-align: center;
+      font-size: 2.2rem;
+      margin-bottom: var(--space);
+      font-weight: 600;
+    }
+    form {
+      display: grid;
+      gap: var(--space);
+      grid-template-columns: 1fr 1fr;
+      background: var(--secondary-gray);
+      padding: var(--space);
+      border-radius: var(--radius);
+      margin-bottom: var(--space);
+    }
+    form .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 0;
+    }
+    label {
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+    input[type="number"],
+    input[type="text"],
+    select {
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-gray);
+      font-size: 1rem;
+    }
+    select {
+      background: #fff;
+    }
+    .btn {
+      background: var(--primary-teal);
+      color: #fff;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 180ms;
+      margin-right: var(--space);
+    }
+    .btn:active, .btn:hover {
+      background: var(--primary-teal-dark);
+    }
+    .btn-accent {
+      background: var(--accent-orange);
+      color: #fff;
+    }
+    .btn-accent:active, .btn-accent:hover {
+      background: #c34720;
+    }
+    .btn-secondary {
+      background: #fff;
+      color: var(--primary-teal);
+      border: 1px solid var(--primary-teal);
+    }
+    .btn-secondary:hover {
+      background: #e9f1f3;
+    }
+    .success-msg, .error-msg {
+      grid-column: 1 / -1;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 1rem;
+      margin-bottom: -8px;
+    }
+    .success-msg {
+      background: #e5faf0;
+      color: var(--success-green);
+      border: 1px solid #c5e7d7;
+    }
+    .error-msg {
+      background: #ffeaea;
+      color: var(--error-red);
+      border: 1px solid #f8b3ae;
+    }
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space);
+      justify-content: space-between;
+      font-size: 1rem;
+      background: var(--secondary-gray);
+      padding: var(--space);
+      border-radius: var(--radius);
+      margin-bottom: var(--space);
+      align-items: center;
+    }
+    .summary-amount {
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: var(--primary-teal);
+    }
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space);
+      margin: var(--space) 0;
+    }
+    .expense-table {
+      width: 100%;
+      border-radius: var(--radius);
+      border-collapse: collapse;
+      overflow: hidden;
+      margin-bottom: var(--space);
+    }
+    .expense-table th, .expense-table td {
+      padding: 10px 8px;
+      text-align: left;
+      border-bottom: 1px solid #ececec;
+    }
+    .expense-table th {
+      background: var(--secondary-gray);
+      font-weight: 600;
+    }
+    .expense-table tr:last-child td {
+      border-bottom: none;
+    }
+    .empty-row {
+      text-align: center;
+      color: #919191;
+      padding: 16px;
+      font-style: italic;
+    }
+    .category-summary {
+      margin-top: var(--space);
+      background: var(--secondary-gray);
+      border-radius: var(--radius);
+      padding: var(--space);
+    }
+    .chart-container {
+      margin-top: 4px;
+      text-align: center;
+      min-height: 220px;
+    }
+    .category-highest {
+      color: var(--accent-orange);
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    .table-action-btn {
+      background: var(--accent-orange);
+      color: #fff;
+      border: none;
+      padding: 7px 12px;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 150ms;
+    }
+    .table-action-btn:active, .table-action-btn:hover {
+      background: #c34720;
+    }
+    .sort-btn {
+      background: #fff;
+      border: 1px solid var(--primary-teal);
+      color: var(--primary-teal);
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 0.97rem;
+      margin-left: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .sort-btn.active, .sort-btn:hover {
+      background: var(--primary-teal);
+      color: #fff;
+    }
+    .clear-all-btn {
+      float: right;
+    }
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(40, 80, 90, 0.15);
+      z-index: 90;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal {
+      background: #fff;
+      border-radius: 10px;
+      padding: 28px 30px 20px 30px;
+      max-width: 96vw;
+      box-shadow: 0 6px 36px 0 rgba(32,128,144,0.12);
+      z-index: 100;
+      font-size: 1.08rem;
+      min-width: 260px;
+      min-height: 90px;
+      text-align: center;
+      position: relative;
+    }
+    .modal .btn {
+      margin: 20px 8px 0 8px;
+      font-size: 1rem;
+    }
+    @media (max-width: 640px){
+      .container {padding: 10px; }
+      .summary, .category-summary {padding: 10px;}
+      form { grid-template-columns: 1fr; }
+      .clear-all-btn {float: none; display: block; margin-bottom: 12px;}
+      .category-summary, .summary {font-size: 0.98rem;}
+      .expense-table th, .expense-table td { font-size: 0.99rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Simple Expense Tracker</h1>
+    <form id="expense-form" autocomplete="off">
+      <div class="form-group">
+        <label for="amount">Amount (₹)</label>
+        <input type="number" id="amount" min="1" max="1000000" step="0.01" required placeholder="e.g. 1000" />
+      </div>
+      <div class="form-group">
+        <label for="desc">Description</label>
+        <input type="text" id="desc" required maxlength="100" placeholder="e.g. Grocery shopping" />
+      </div>
+      <div class="form-group">
+        <label for="category">Category</label>
+        <select id="category" required>
+          <option value="">Select</option>
+          <option>Housing</option>
+          <option>Food</option>
+          <option>Investment</option>
+          <option>Transportation</option>
+          <option>Entertainment</option>
+          <option>Healthcare</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group" style="align-items: flex-end;">
+        <button class="btn" type="submit" id="add-btn">Add Expense</button>
+      </div>
+      <div class="success-msg" id="success-msg" style="display:none"></div>
+      <div class="error-msg" id="error-msg" style="display:none"></div>
+    </form>
+    <div class="summary" id="stats-summary">
+      <div>Total expenses: <span id="total-count">0</span></div>
+      <div>Total spent: <span class="summary-amount" id="total-amount">₹0</span></div>
+      <div>Highest category: <span id="highest-category">-</span></div>
+      <button class="btn btn-accent clear-all-btn" id="clear-all-btn">Clear All</button>
+    </div>
+    <div class="filter-row">
+      <label for="category-filter">Filter by category:</label>
+      <select id="category-filter">
+        <option value="">All categories</option>
+        <option>Housing</option>
+        <option>Food</option>
+        <option>Investment</option>
+        <option>Transportation</option>
+        <option>Entertainment</option>
+        <option>Healthcare</option>
+        <option>Other</option>
+      </select>
+      <span style="flex:1;"></span>
+      <div>
+        <span>Sort by:</span>
+        <button class="sort-btn" id="sort-date">Date</button>
+        <button class="sort-btn" id="sort-amount">Amount</button>
+      </div>
+    </div>
+    <table class="expense-table" id="expense-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Amount</th>
+          <th>Category</th>
+          <th>Description</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Data Rows Inserted Here -->
+      </tbody>
+    </table>
+    <div class="category-summary">
+      <strong>Category breakdown</strong>
+      <div class="chart-container">
+        <canvas id="category-chart"></canvas>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top:28px">
+      <img src="https://ppl-ai-code-interpreter-files.s3.amazonaws.com/web/direct-files/74ba0ad205628519f114d5ad620df67c/a6773ed8-3c22-4e82-b2d8-fe9a5e7cdd80/a2eb50f3.png"
+           alt="Expense Tracker App Workflow"
+           style="width:230px;max-width:100%;border-radius:8px;box-shadow:0 3px 20px rgba(32,128,144,0.10);margin-bottom:10px;" />
+      <div style="font-size:0.92rem;color:#aaa;margin-top:3px;margin-bottom:12px;">Expense Tracker App Workflow</div>
+    </div>
+  </div>
+  <div id="modal-root"></div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // ---- EXPENSE TRACKER LOGIC ----
+    const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 });
+    const LS_KEY = 'expenses-list-v1';
+    const categoryList = ['Housing','Food','Investment','Transportation','Entertainment','Healthcare','Other'];
+
+    // --- State ---
+    let expenses = [];
+    let currentSort = 'date'; // or 'amount'
+    let sortDir = -1; // -1 = desc, 1 = asc
+    let filterCategory = '';
+    // --- Elements ---
+    const tableBody = document.querySelector('#expense-table tbody');
+    const totalCountEl = document.getElementById('total-count');
+    const totalAmountEl = document.getElementById('total-amount');
+    const highestCategoryEl = document.getElementById('highest-category');
+    const addBtn = document.getElementById('add-btn');
+    const form = document.getElementById('expense-form');
+    const successMsg = document.getElementById('success-msg');
+    const errorMsg = document.getElementById('error-msg');
+    const clearAllBtn = document.getElementById('clear-all-btn');
+    const categoryChartCanvas = document.getElementById('category-chart');
+    const categoryFilter = document.getElementById('category-filter');
+    const sortDateBtn = document.getElementById('sort-date');
+    const sortAmountBtn = document.getElementById('sort-amount');
+    // Modal root
+    const modalRoot = document.getElementById('modal-root');
+
+    // ---- Util ---
+    function showSuccess(msg) {
+      successMsg.textContent = msg;
+      successMsg.style.display = 'block';
+      setTimeout(() => { successMsg.style.display = 'none'; }, 1850);
+    }
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorMsg.style.display = 'block';
+      setTimeout(() => { errorMsg.style.display = 'none'; }, 2300);
+    }
+    function getTodayStr() {
+      const d = new Date();
+      return d.toISOString().slice(0,10);
+    }
+    function formatDate(str) {
+      // Input: 'YYYY-MM-DD'
+      const [y,m,d] = str.split('-');
+      return `${d}-${m}-${y}`;
+    }
+    function saveExpenses() {
+      window._expensesMemoryStorage = window._expensesMemoryStorage || {}; window._expensesMemoryStorage[LS_KEY] = JSON.stringify(expenses);
+    }
+    function loadExpenses() {
+      let data = window._expensesMemoryStorage && window._expensesMemoryStorage[LS_KEY];
+      if (data) return JSON.parse(data);
+      return [];
+    }
+    function clearForm() {
+      form.amount.value = '';
+      form.desc.value = '';
+      form.category.value = '';
+    }
+
+    // ---- Table Rendering & Filtering ---
+    function getFiltered() {
+      if(!filterCategory) return [...expenses];
+      return expenses.filter(x => x.category===filterCategory);
+    }
+    function getSorted(list) {
+      return [...list].sort((a, b) => {
+        if(currentSort==='date') {
+          if(a.date === b.date) return 0;
+          return sortDir * (a.date < b.date ? 1 : -1);
+        } else {
+          return sortDir * (Number(a.amount) - Number(b.amount));
+        }
+      });
+    }
+    function renderTable() {
+      const filtered = getFiltered();
+      const sorted = getSorted(filtered);
+      tableBody.innerHTML = '';
+      if(sorted.length === 0) {
+        let txt = filterCategory?'No expenses for this category yet.':'No expenses added yet.';
+        tableBody.innerHTML = `<tr><td colspan='5' class='empty-row'>${txt}</td></tr>`;
+        return;
+      }
+      sorted.forEach((exp, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${formatDate(exp.date)}</td>
+          <td>${currencyFormatter.format(exp.amount)}</td>
+          <td>${exp.category}</td>
+          <td>${exp.description}</td>
+          <td><button class='table-action-btn' data-idx='${exp.id}'>Delete</button></td>
+        `;
+        tr.querySelector('.table-action-btn').onclick = () => confirmDelete(exp.id);
+        tableBody.appendChild(tr);
+      });
+    }
+
+    // ---- Stats and Chart ---
+    let chartInstance = null;
+    function renderStats() {
+      // Total
+      const filtered = getFiltered();
+      totalCountEl.textContent = filtered.length;
+      const totalAmt = filtered.reduce((sum, item) => sum + Number(item.amount), 0);
+      totalAmountEl.textContent = currencyFormatter.format(totalAmt);
+      // Highest category
+      let byCat = {}; filtered.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+Number(e.amount));
+      let maxCat = '-';
+      let maxAmt = 0;
+      for(const c of Object.keys(byCat)){
+        if(byCat[c]>maxAmt){maxCat=c;maxAmt=byCat[c];}
+      }
+      highestCategoryEl.textContent = maxCat;
+      renderPieChart(byCat);
+    }
+
+    function renderPieChart(byCat) {
+      // keep order
+      const labels = categoryList.filter(cat => byCat[cat] > 0);
+      const data = labels.map(cat => byCat[cat]);
+      if(chartInstance){chartInstance.destroy();}
+      if(data.length===0){
+        categoryChartCanvas.parentNode.querySelector('.chartjs-render-monitor')?.remove();
+        return;
+      }
+      chartInstance = new Chart(categoryChartCanvas, {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: [
+              '#1FB8CD', '#FFC185', '#B4413C', '#ECEBD5', '#5D878F', '#DB4545', '#D2BA4C', '#964325', '#944454', '#13343B'
+            ],
+          }]
+        },
+        options: {
+          plugins:{legend:{display:true,position:'bottom',labels:{font:{size:14}}}},
+          responsive:true,
+          maintainAspectRatio:false,
+          aspectRatio:1.9
+        }
+      });
+      categoryChartCanvas.style.height = '200px';
+    }
+
+    // ---- Delete & Clear All ----
+    function confirmDelete(id) {
+      openModal({
+        title: 'Remove Expense',
+        desc: 'Are you sure you want to delete this expense entry?',
+        confirmText: 'Delete',
+        confirmClass: 'btn-accent',
+        onConfirm: () => { deleteExpense(id); closeModal(); },
+        onCancel: closeModal
+      });
+    }
+    function deleteExpense(id) {
+      expenses = expenses.filter(x => x.id !== id);
+      saveExpenses();
+      renderTable();
+      renderStats();
+      showSuccess('Expense deleted');
+    }
+    function handleClearAll() {
+      openModal({
+        title: 'Clear all expenses',
+        desc: 'This will delete all saved expenses. This action cannot be undone. Proceed?',
+        confirmText: 'Clear All',
+        confirmClass: 'btn-accent',
+        onConfirm: () => {
+          expenses = [];
+          saveExpenses();
+          renderTable();
+          renderStats();
+          closeModal();
+          showSuccess('All expenses cleared');
+        },
+        onCancel: closeModal
+      });
+    }
+    // ---- Modal ---
+    function openModal(opts) {
+      modalRoot.innerHTML = `<div class='modal-backdrop'>
+        <div class='modal'>
+          <div style='font-weight:600;font-size:1.1rem;'>${opts.title||''}</div>
+          <div style='margin:12px 0 16px 0;'>${opts.desc||''}</div>
+          <button class='btn ${opts.confirmClass||''}'>${opts.confirmText||'OK'}</button>
+          <button class='btn btn-secondary'>Cancel</button>
+        </div>
+      </div>`;
+      const box = modalRoot.querySelector('.modal');
+      box.querySelector('.btn').onclick = opts.onConfirm;
+      box.querySelector('.btn-secondary').onclick = opts.onCancel || closeModal;
+    }
+    function closeModal(){modalRoot.innerHTML='';}
+    // ---- Sort & Filter ---
+    sortDateBtn.onclick = () => {currentSort='date';flipSortDir('date');updateSortBtn();renderTable();};
+    sortAmountBtn.onclick = () => {currentSort='amount';flipSortDir('amount');updateSortBtn();renderTable();};
+    function flipSortDir(field){
+      if(currentSort===field)sortDir*=-1;
+      else sortDir = field==='date' ? -1 : -1;
+    }
+    function updateSortBtn(){
+      sortDateBtn.classList.toggle('active', currentSort==='date');
+      sortAmountBtn.classList.toggle('active', currentSort==='amount');
+    }
+    categoryFilter.onchange = function(){
+      filterCategory = this.value;
+      renderTable();
+      renderStats();
+    };
+    // ----- Add Expense ----
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      // Validate
+      const amount = form.amount.value.trim();
+      const desc = form.desc.value.trim();
+      const cat = form.category.value;
+      if(!amount || isNaN(amount) || Number(amount)<=0){
+        showError('Amount must be a positive number');
+        form.amount.focus(); return;
+      }
+      if(!desc){
+        showError('Description is required'); form.desc.focus(); return;
+      }
+      if(!cat){
+        showError('Please select a category'); form.category.focus(); return;
+      }
+      // Insert
+      expenses.push({
+        id: 'id-'+Math.random().toString(36).substr(2,8)+Date.now(),
+        date: getTodayStr(),
+        amount: Number(Number(amount).toFixed(2)),
+        category: cat,
+        description: desc
+      });
+      saveExpenses();
+      renderTable();
+      renderStats();
+      clearForm();
+      showSuccess('Expense added!');
+    };
+    clearAllBtn.onclick = handleClearAll;
+    // ------- Init ---------
+    function main(){
+      expenses = loadExpenses();
+      updateSortBtn();
+      renderTable();
+      renderStats();
+    }
+    main();
+  </script>
+</body>
+</html>
