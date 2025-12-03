@@ -242,100 +242,6 @@
       margin: 20px 8px 0 8px;
       font-size: 1rem;
     }
-    .debug-panel {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #fff;
-      border: 2px solid var(--primary-teal);
-      border-radius: 10px;
-      padding: 16px;
-      max-width: 320px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-      z-index: 50;
-      font-size: 0.9rem;
-      max-height: 70vh;
-      overflow-y: auto;
-      display: none;
-    }
-    .debug-panel.active {
-      display: block;
-    }
-    .debug-toggle {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: var(--primary-teal);
-      color: #fff;
-      border: none;
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      cursor: pointer;
-      font-size: 1.2rem;
-      z-index: 49;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 12px rgba(32,128,144,0.3);
-    }
-    .debug-toggle:hover {
-      background: var(--primary-teal-dark);
-    }
-    .debug-status {
-      padding: 8px;
-      border-radius: 6px;
-      background: #f0f0f0;
-      margin: 8px 0;
-      font-family: monospace;
-      font-size: 0.85rem;
-      word-break: break-all;
-      max-height: 120px;
-      overflow-y: auto;
-    }
-    .debug-status.success {
-      background: #e5faf0;
-      color: var(--success-green);
-    }
-    .debug-status.error {
-      background: #ffeaea;
-      color: var(--error-red);
-    }
-    .debug-btn {
-      background: var(--primary-teal);
-      color: #fff;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      margin: 4px 4px 4px 0;
-      transition: background 150ms;
-    }
-    .debug-btn:hover {
-      background: var(--primary-teal-dark);
-    }
-    .debug-btn-danger {
-      background: var(--accent-orange);
-    }
-    .debug-btn-danger:hover {
-      background: #c34720;
-    }
-    .debug-input {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid var(--border-gray);
-      border-radius: 4px;
-      font-size: 0.85rem;
-      margin: 8px 0;
-      font-family: monospace;
-    }
-    .loading {
-      text-align: center;
-      padding: 20px;
-      color: #666;
-      font-style: italic;
-    }
     @media (max-width: 640px){
       .container {padding: 10px; }
       .summary, .category-summary {padding: 10px;}
@@ -343,11 +249,6 @@
       .clear-all-btn {float: none; display: block; margin-bottom: 12px;}
       .category-summary, .summary {font-size: 0.98rem;}
       .expense-table th, .expense-table td { font-size: 0.99rem; }
-      .debug-panel {
-        max-width: calc(100vw - 40px);
-        right: 20px;
-        bottom: 80px;
-      }
     }
   </style>
 </head>
@@ -369,8 +270,6 @@
           <option value="">Select</option>
           <option>Housing</option>
           <option>Food</option>
-          <option>Bike</option>
-          <option>Fuel</option>
           <option>Investment</option>
           <option>Transportation</option>
           <option>Entertainment</option>
@@ -383,9 +282,6 @@
       </div>
       <div class="success-msg" id="success-msg" style="display:none"></div>
       <div class="error-msg" id="error-msg" style="display:none"></div>
-      <div style="grid-column: 1 / -1; font-size: 0.85rem; color: #666; margin-top: -8px;">
-        💾 Local storage: <span id="local-status" style="color: #21916d; font-weight: 600;">✅ Active</span> | Google Sheet: <span id="sheets-status">Optional (click 🔧 to configure)</span>
-      </div>
     </form>
     <div class="summary" id="stats-summary">
       <div>Total expenses: <span id="total-count">0</span></div>
@@ -397,15 +293,13 @@
       <label for="category-filter">Filter by category:</label>
       <select id="category-filter">
         <option value="">All categories</option>
-          <option>Housing</option>
-          <option>Food</option>
-          <option>Bike</option>
-          <option>Fuel</option>
-          <option>Investment</option>
-          <option>Transportation</option>
-          <option>Entertainment</option>
-          <option>Healthcare</option>
-          <option>Other</option>
+        <option>Housing</option>
+        <option>Food</option>
+        <option>Investment</option>
+        <option>Transportation</option>
+        <option>Entertainment</option>
+        <option>Healthcare</option>
+        <option>Other</option>
       </select>
       <span style="flex:1;"></span>
       <div>
@@ -425,7 +319,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr><td colspan="5" class="loading">Loading expenses from Google Sheet...</td></tr>
+        <!-- Data Rows Inserted Here -->
       </tbody>
     </table>
     <div class="category-summary">
@@ -434,307 +328,32 @@
         <canvas id="category-chart"></canvas>
       </div>
     </div>
-  </div>
-
-  <!-- Debug Panel Toggle Button -->
-  <button class="debug-toggle" id="debug-toggle" title="Google Sheet Configuration">🔧</button>
-  
-  <!-- Debug Panel -->
-  <div class="debug-panel" id="debug-panel">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-      <strong>🔧 Google Sheet Setup</strong>
-      <button id="close-debug" style="padding: 4px 8px; font-size: 0.85rem; border: none; background: none; color: var(--primary-teal); cursor: pointer; font-weight: bold;">✕</button>
-    </div>
-    <div style="font-size: 0.85rem; line-height: 1.6;">
-      <strong style="display: block; margin-bottom: 8px;">📋 Configuration:</strong>
-      <div class="debug-status">
-        Script URL: <span id="debug-script-url">Not configured</span>
-      </div>
-      
-      <strong style="display: block; margin: 12px 0 8px 0;">🔗 Enter Deployment URL:</strong>
-      <textarea class="debug-input" id="script-url-input" placeholder="Paste your Google Apps Script deployment URL here..." style="min-height: 50px; resize: vertical;"></textarea>
-      <button class="debug-btn" id="save-url-btn">Save URL</button>
-      <button class="debug-btn debug-btn-danger" id="clear-url-btn">Clear</button>
-      
-      <strong style="display: block; margin: 12px 0 8px 0;">🧪 Test Connection:</strong>
-      <button class="debug-btn" id="test-script-btn">Test Script</button>
-      <div class="debug-status" id="test-result" style="display: none;"></div>
-      
-      <strong style="display: block; margin: 12px 0 8px 0;">📊 Last Response:</strong>
-      <div class="debug-status" id="last-response" style="max-height: 150px; overflow-y: auto;">No request yet</div>
-      
-      <div style="margin-top: 12px; padding: 10px; background: #f9f9f9; border-radius: 4px; font-size: 0.8rem;">
-        <strong>Need help?</strong>
-        <ol style="margin: 8px 0; padding-left: 18px;">
-          <li>Create Google Apps Script in your Sheet</li>
-          <li>Deploy as Web app (Anyone access)</li>
-          <li>Copy deployment URL</li>
-          <li>Paste here and click Save</li>
-          <li>Click Test Script to verify</li>
-        </ol>
-      </div>
+    <div style="text-align:center; margin-top:28px">
+      <img src="https://ppl-ai-code-interpreter-files.s3.amazonaws.com/web/direct-files/74ba0ad205628519f114d5ad620df67c/a6773ed8-3c22-4e82-b2d8-fe9a5e7cdd80/a2eb50f3.png"
+           alt="Expense Tracker App Workflow"
+           style="width:230px;max-width:100%;border-radius:8px;box-shadow:0 3px 20px rgba(32,128,144,0.10);margin-bottom:10px;" />
+      <div style="font-size:0.92rem;color:#aaa;margin-top:3px;margin-bottom:12px;">Expense Tracker App Workflow</div>
     </div>
   </div>
-
   <div id="modal-root"></div>
-  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    // ========================================
-    // GOOGLE APPS SCRIPT CONFIGURATION
-    // ========================================
-    let GOOGLE_APPS_SCRIPT_URL = localStorage.getItem('gasScriptUrl') || '';
-    let lastApiResponse = 'No request yet';
-
-    /**
-     * Fetch ALL expenses from Google Sheet
-     */
-    async function fetchAllFromGoogleSheets() {
-      if (!GOOGLE_APPS_SCRIPT_URL) return [];
-      
-      try {
-        console.log('📥 Loading expenses from Google Sheet...');
-        const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'GET_ALL' })
-        });
-        
-        const result = await response.json();
-        lastApiResponse = JSON.stringify(result, null, 2);
-        document.getElementById('last-response').textContent = lastApiResponse;
-        
-        if (result.status === 'success' && Array.isArray(result.data)) {
-          console.log(`✅ Loaded ${result.data.length} expenses from Google Sheet`);
-          return result.data;
-        } else {
-          console.warn('No data from sheet or invalid response:', result);
-          return [];
-        }
-      } catch (error) {
-        console.error('❌ Failed to load from Google Sheet:', error);
-        return [];
-      }
-    }
-
-    /**
-     * Normalize sheet row to expense format
-     */
-    function normalizeExpense(row) {
-      return {
-        id: row.id || `sheet-${row.rowNumber || 0}-${row.date || Date.now()}`,
-        date: row.date || new Date().toISOString().slice(0, 10),
-        amount: Number(row.amount) || 0,
-        category: row.category || 'Other',
-        description: row.description || ''
-      };
-    }
-
-    /**
-     * Load and merge expenses from Google Sheet
-     */
-    async function loadFromGoogleSheets() {
-      try {
-        const sheetExpenses = await fetchAllFromGoogleSheets();
-        if (sheetExpenses.length === 0) return;
-
-        const normalized = sheetExpenses
-          .map(normalizeExpense)
-          .filter(exp => exp.amount > 0 && exp.category);
-
-        // De-duplicate: keep local if ID conflict
-        const localIds = new Set(expenses.map(e => e.id));
-        const merged = [
-          ...expenses,
-          ...normalized.filter(e => !localIds.has(e.id))
-        ];
-
-        expenses = merged;
-        saveExpenses();
-        console.log(`✅ Merged ${normalized.length} sheet expenses with ${expenses.length} total`);
-        showSuccess(`✅ Loaded ${sheetExpenses.length} expenses from Google Sheet!`);
-      } catch (error) {
-        console.warn('⚠️ Using local data only (sheet load failed)');
-      }
-    }
-
-    /**
-     * Save expense to Google Sheet via Apps Script
-     */
-    async function saveToGoogleSheets(expense) {
-      if (!GOOGLE_APPS_SCRIPT_URL) {
-        console.log('ℹ️ Google Apps Script URL not configured. Expense saved locally only.');
-        return;
-      }
-
-      try {
-        console.log('📤 Sending expense to Google Sheet...');
-        
-        const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'ADD',
-            date: expense.date,
-            amount: expense.amount,
-            category: expense.category,
-            description: expense.description,
-            id: expense.id
-          })
-        });
-
-        const result = await response.json();
-        lastApiResponse = JSON.stringify(result, null, 2);
-        
-        if (result.status === 'success') {
-          console.log('✅ Saved to Google Sheet!', result);
-          showSuccess('✅ Expense synced to Google Sheet!');
-          document.getElementById('last-response').textContent = lastApiResponse;
-          updateSheetsStatus();
-        } else {
-          throw new Error(result.message || 'Unknown error');
-        }
-      } catch (error) {
-        console.error('❌ Error:', error.message);
-        lastApiResponse = `ERROR: ${error.message}`;
-        document.getElementById('last-response').textContent = lastApiResponse;
-        console.warn('⚠️ Expense saved locally. Google Sheet sync failed.');
-      }
-    }
-
-    /**
-     * Test Apps Script connection
-     */
-    async function testScriptConnection() {
-      const testBtn = document.getElementById('test-script-btn');
-      const testResult = document.getElementById('test-result');
-      
-      if (!GOOGLE_APPS_SCRIPT_URL) {
-        testResult.style.display = 'block';
-        testResult.textContent = '❌ No URL configured. Enter the URL first.';
-        testResult.className = 'debug-status error';
-        return;
-      }
-
-      testBtn.disabled = true;
-      testBtn.textContent = 'Testing...';
-      testResult.style.display = 'block';
-      testResult.textContent = '⏳ Testing connection...';
-      testResult.className = 'debug-status';
-
-      try {
-        const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'TEST' })
-        });
-
-        const result = await response.json();
-        lastApiResponse = JSON.stringify(result, null, 2);
-        document.getElementById('last-response').textContent = lastApiResponse;
-
-        if (result.status === 'success') {
-          testResult.textContent = `✅ Connected! Script is working perfectly.`;
-          testResult.className = 'debug-status success';
-          console.log('✅ Script Connection successful!');
-        } else {
-          throw new Error(result.message || 'Unknown error');
-        }
-      } catch (error) {
-        testResult.textContent = `❌ Connection failed: ${error.message}`;
-        testResult.className = 'debug-status error';
-        console.error('❌ Script Test Failed:', error);
-      } finally {
-        testBtn.disabled = false;
-        testBtn.textContent = 'Test Script';
-      }
-    }
-
-    /**
-     * Save Google Apps Script URL
-     */
-    function saveScriptUrl() {
-      const url = document.getElementById('script-url-input').value.trim();
-      
-      if (!url) {
-        alert('Please enter the Google Apps Script deployment URL');
-        return;
-      }
-
-      if (!url.includes('script.google.com')) {
-        alert('Invalid URL. Make sure you copied the correct deployment URL from Google Apps Script.');
-        return;
-      }
-
-      GOOGLE_APPS_SCRIPT_URL = url;
-      localStorage.setItem('gasScriptUrl', url);
-      updateDebugPanel();
-      updateSheetsStatus();
-      showSuccess('✅ Script URL saved! Now refresh page to load data.');
-      console.log('✅ Google Apps Script URL configured');
-    }
-
-    /**
-     * Clear Google Apps Script URL
-     */
-    function clearScriptUrl() {
-      GOOGLE_APPS_SCRIPT_URL = '';
-      localStorage.removeItem('gasScriptUrl');
-      document.getElementById('script-url-input').value = '';
-      updateDebugPanel();
-      showSuccess('✅ URL cleared');
-      console.log('✅ Google Apps Script URL cleared');
-    }
-
-    /**
-     * Update debug panel display
-     */
-    function updateDebugPanel() {
-      const urlEl = document.getElementById('debug-script-url');
-      const input = document.getElementById('script-url-input');
-      
-      if (GOOGLE_APPS_SCRIPT_URL) {
-        const shortUrl = GOOGLE_APPS_SCRIPT_URL.substring(0, 30) + '...' + GOOGLE_APPS_SCRIPT_URL.substring(GOOGLE_APPS_SCRIPT_URL.length - 15);
-        urlEl.textContent = shortUrl;
-        input.value = GOOGLE_APPS_SCRIPT_URL;
-      } else {
-        urlEl.textContent = 'Not configured';
-        input.value = '';
-      }
-    }
-
-    /**
-     * Update sheets status indicator
-     */
-    function updateSheetsStatus() {
-      const statusEl = document.getElementById('sheets-status');
-      if (GOOGLE_APPS_SCRIPT_URL) {
-        statusEl.innerHTML = '✅ Connected <span style="font-size:0.8em;">(refresh to load)</span>';
-        statusEl.style.color = '#21916d';
-        statusEl.style.fontWeight = '600';
-      } else {
-        statusEl.textContent = 'Optional (click 🔧 to configure)';
-        statusEl.style.color = '#999';
-        statusEl.style.fontWeight = 'normal';
-      }
-    }
-
     // ---- EXPENSE TRACKER LOGIC ----
     const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 });
     const LS_KEY = 'expenses-list-v1';
-    const categoryList = ['Housing','Food','Bike','Fuel','Investment','Transportation','Entertainment','Healthcare','Other'];
+    const categoryList = ['Housing','Food','Investment','Transportation','Entertainment','Healthcare','Other'];
 
     // --- State ---
     let expenses = [];
-    let currentSort = 'date';
-    let sortDir = -1;
+    let currentSort = 'date'; // or 'amount'
+    let sortDir = -1; // -1 = desc, 1 = asc
     let filterCategory = '';
-
     // --- Elements ---
     const tableBody = document.querySelector('#expense-table tbody');
     const totalCountEl = document.getElementById('total-count');
     const totalAmountEl = document.getElementById('total-amount');
     const highestCategoryEl = document.getElementById('highest-category');
+    const addBtn = document.getElementById('add-btn');
     const form = document.getElementById('expense-form');
     const successMsg = document.getElementById('success-msg');
     const errorMsg = document.getElementById('error-msg');
@@ -743,52 +362,41 @@
     const categoryFilter = document.getElementById('category-filter');
     const sortDateBtn = document.getElementById('sort-date');
     const sortAmountBtn = document.getElementById('sort-amount');
+    // Modal root
     const modalRoot = document.getElementById('modal-root');
 
-    // Debug panel elements
-    const debugToggle = document.getElementById('debug-toggle');
-    const debugPanel = document.getElementById('debug-panel');
-    const closeDebugBtn = document.getElementById('close-debug');
-    const saveUrlBtn = document.getElementById('save-url-btn');
-    const clearUrlBtn = document.getElementById('clear-url-btn');
-    const testScriptBtn = document.getElementById('test-script-btn');
-
-    // --- Util ---
+    // ---- Util ---
     function showSuccess(msg) {
       successMsg.textContent = msg;
       successMsg.style.display = 'block';
-      setTimeout(() => { successMsg.style.display = 'none'; }, 2500);
+      setTimeout(() => { successMsg.style.display = 'none'; }, 1850);
     }
     function showError(msg) {
       errorMsg.textContent = msg;
       errorMsg.style.display = 'block';
-      setTimeout(() => { errorMsg.style.display = 'none'; }, 3000);
+      setTimeout(() => { errorMsg.style.display = 'none'; }, 2300);
     }
     function getTodayStr() {
       const d = new Date();
       return d.toISOString().slice(0,10);
     }
     function formatDate(str) {
+      // Input: 'YYYY-MM-DD'
       const [y,m,d] = str.split('-');
       return `${d}-${m}-${y}`;
     }
     function saveExpenses() {
-      localStorage.setItem(LS_KEY, JSON.stringify(expenses));
+      window._expensesMemoryStorage = window._expensesMemoryStorage || {}; window._expensesMemoryStorage[LS_KEY] = JSON.stringify(expenses);
     }
     function loadExpenses() {
-      try {
-        const data = localStorage.getItem(LS_KEY);
-        return data ? JSON.parse(data) : [];
-      } catch (e) {
-        console.warn('LocalStorage corrupted, starting fresh');
-        return [];
-      }
+      let data = window._expensesMemoryStorage && window._expensesMemoryStorage[LS_KEY];
+      if (data) return JSON.parse(data);
+      return [];
     }
     function clearForm() {
       form.amount.value = '';
       form.desc.value = '';
       form.category.value = '';
-      form.amount.focus();
     }
 
     // ---- Table Rendering & Filtering ---
@@ -810,21 +418,19 @@
       const filtered = getFiltered();
       const sorted = getSorted(filtered);
       tableBody.innerHTML = '';
-      
-      if (sorted.length === 0) {
-        const txt = filterCategory ? 'No expenses for this category yet.' : 'No expenses added yet.';
+      if(sorted.length === 0) {
+        let txt = filterCategory?'No expenses for this category yet.':'No expenses added yet.';
         tableBody.innerHTML = `<tr><td colspan='5' class='empty-row'>${txt}</td></tr>`;
         return;
       }
-      
-      sorted.forEach((exp) => {
+      sorted.forEach((exp, idx) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${formatDate(exp.date)}</td>
           <td>${currencyFormatter.format(exp.amount)}</td>
           <td>${exp.category}</td>
           <td>${exp.description}</td>
-          <td><button class='table-action-btn' data-id='${exp.id}'>Delete</button></td>
+          <td><button class='table-action-btn' data-idx='${exp.id}'>Delete</button></td>
         `;
         tr.querySelector('.table-action-btn').onclick = () => confirmDelete(exp.id);
         tableBody.appendChild(tr);
@@ -834,35 +440,31 @@
     // ---- Stats and Chart ---
     let chartInstance = null;
     function renderStats() {
+      // Total
       const filtered = getFiltered();
       totalCountEl.textContent = filtered.length;
       const totalAmt = filtered.reduce((sum, item) => sum + Number(item.amount), 0);
       totalAmountEl.textContent = currencyFormatter.format(totalAmt);
-      
-      let byCat = {};
-      filtered.forEach(e => byCat[e.category] = (byCat[e.category] || 0) + Number(e.amount));
-      
+      // Highest category
+      let byCat = {}; filtered.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+Number(e.amount));
       let maxCat = '-';
       let maxAmt = 0;
       for(const c of Object.keys(byCat)){
-        if(byCat[c] > maxAmt){ maxCat = c; maxAmt = byCat[c]; }
+        if(byCat[c]>maxAmt){maxCat=c;maxAmt=byCat[c];}
       }
       highestCategoryEl.textContent = maxCat;
-      
       renderPieChart(byCat);
     }
 
     function renderPieChart(byCat) {
+      // keep order
       const labels = categoryList.filter(cat => byCat[cat] > 0);
       const data = labels.map(cat => byCat[cat]);
-      
-      if(chartInstance) chartInstance.destroy();
-      
-      if(data.length === 0){
+      if(chartInstance){chartInstance.destroy();}
+      if(data.length===0){
         categoryChartCanvas.parentNode.querySelector('.chartjs-render-monitor')?.remove();
         return;
       }
-      
       chartInstance = new Chart(categoryChartCanvas, {
         type: 'pie',
         data: {
@@ -870,22 +472,15 @@
           datasets: [{
             data: data,
             backgroundColor: [
-              '#1FB8CD', '#FFC185', '#B4413C', '#ECEBD5', '#5D878F', 
-              '#DB4545', '#D2BA4C', '#964325', '#944454', '#13343B'
+              '#1FB8CD', '#FFC185', '#B4413C', '#ECEBD5', '#5D878F', '#DB4545', '#D2BA4C', '#964325', '#944454', '#13343B'
             ],
           }]
         },
         options: {
-          plugins: {
-            legend: {
-              display: true,
-              position: 'bottom',
-              labels: { font: { size: 14 } }
-            }
-          },
-          responsive: true,
-          maintainAspectRatio: false,
-          aspectRatio: 1.9
+          plugins:{legend:{display:true,position:'bottom',labels:{font:{size:14}}}},
+          responsive:true,
+          maintainAspectRatio:false,
+          aspectRatio:1.9
         }
       });
       categoryChartCanvas.style.height = '200px';
@@ -902,7 +497,6 @@
         onCancel: closeModal
       });
     }
-    
     function deleteExpense(id) {
       expenses = expenses.filter(x => x.id !== id);
       saveExpenses();
@@ -910,7 +504,6 @@
       renderStats();
       showSuccess('Expense deleted');
     }
-    
     function handleClearAll() {
       openModal({
         title: 'Clear all expenses',
@@ -919,7 +512,7 @@
         confirmClass: 'btn-accent',
         onConfirm: () => {
           expenses = [];
-          localStorage.removeItem(LS_KEY);
+          saveExpenses();
           renderTable();
           renderStats();
           closeModal();
@@ -928,132 +521,76 @@
         onCancel: closeModal
       });
     }
-
     // ---- Modal ---
     function openModal(opts) {
-      let content = opts.customContent || `<div style='margin:12px 0 16px 0;'>${opts.desc||''}</div>`;
-      
       modalRoot.innerHTML = `<div class='modal-backdrop'>
         <div class='modal'>
           <div style='font-weight:600;font-size:1.1rem;'>${opts.title||''}</div>
-          ${content}
+          <div style='margin:12px 0 16px 0;'>${opts.desc||''}</div>
           <button class='btn ${opts.confirmClass||''}'>${opts.confirmText||'OK'}</button>
           <button class='btn btn-secondary'>Cancel</button>
         </div>
       </div>`;
-      
       const box = modalRoot.querySelector('.modal');
-      box.querySelector('.btn:not(.btn-secondary)').onclick = opts.onConfirm;
+      box.querySelector('.btn').onclick = opts.onConfirm;
       box.querySelector('.btn-secondary').onclick = opts.onCancel || closeModal;
     }
-    
-    function closeModal(){ modalRoot.innerHTML = ''; }
-
+    function closeModal(){modalRoot.innerHTML='';}
     // ---- Sort & Filter ---
-    sortDateBtn.onclick = () => { 
-      currentSort = 'date'; 
-      if (currentSort === 'date') sortDir *= -1; else sortDir = -1;
-      updateSortBtn(); 
-      renderTable(); 
-    };
-    
-    sortAmountBtn.onclick = () => { 
-      currentSort = 'amount'; 
-      if (currentSort === 'amount') sortDir *= -1; else sortDir = -1;
-      updateSortBtn(); 
-      renderTable(); 
-    };
-    
-    function updateSortBtn(){
-      sortDateBtn.classList.toggle('active', currentSort === 'date');
-      sortAmountBtn.classList.toggle('active', currentSort === 'amount');
+    sortDateBtn.onclick = () => {currentSort='date';flipSortDir('date');updateSortBtn();renderTable();};
+    sortAmountBtn.onclick = () => {currentSort='amount';flipSortDir('amount');updateSortBtn();renderTable();};
+    function flipSortDir(field){
+      if(currentSort===field)sortDir*=-1;
+      else sortDir = field==='date' ? -1 : -1;
     }
-    
+    function updateSortBtn(){
+      sortDateBtn.classList.toggle('active', currentSort==='date');
+      sortAmountBtn.classList.toggle('active', currentSort==='amount');
+    }
     categoryFilter.onchange = function(){
       filterCategory = this.value;
       renderTable();
       renderStats();
     };
-
-    // ---- Add Expense ----
-    form.onsubmit = async function(e) {
+    // ----- Add Expense ----
+    form.onsubmit = function(e) {
       e.preventDefault();
-      
+      // Validate
       const amount = form.amount.value.trim();
       const desc = form.desc.value.trim();
       const cat = form.category.value;
-      
-      if(!amount || isNaN(amount) || Number(amount) <= 0){
+      if(!amount || isNaN(amount) || Number(amount)<=0){
         showError('Amount must be a positive number');
-        form.amount.focus(); 
-        return;
+        form.amount.focus(); return;
       }
       if(!desc){
-        showError('Description is required'); 
-        form.desc.focus(); 
-        return;
+        showError('Description is required'); form.desc.focus(); return;
       }
       if(!cat){
-        showError('Please select a category'); 
-        form.category.focus(); 
-        return;
+        showError('Please select a category'); form.category.focus(); return;
       }
-      
-      const newExpense = {
+      // Insert
+      expenses.push({
         id: 'id-'+Math.random().toString(36).substr(2,8)+Date.now(),
         date: getTodayStr(),
         amount: Number(Number(amount).toFixed(2)),
         category: cat,
         description: desc
-      };
-      
-      expenses.push(newExpense);
+      });
       saveExpenses();
       renderTable();
       renderStats();
       clearForm();
-      showSuccess('Expense added! ✅');
-      
-      // Sync to Google Sheet (fire and forget)
-      saveToGoogleSheets(newExpense);
+      showSuccess('Expense added!');
     };
-
     clearAllBtn.onclick = handleClearAll;
-
-    // ---- Debug Panel Controls ----
-    debugToggle.onclick = () => {
-      debugPanel.classList.toggle('active');
-      updateDebugPanel();
-    };
-    closeDebugBtn.onclick = () => {
-      debugPanel.classList.remove('active');
-    };
-    saveUrlBtn.onclick = saveScriptUrl;
-    clearUrlBtn.onclick = clearScriptUrl;
-    testScriptBtn.onclick = testScriptConnection;
-
     // ------- Init ---------
-    async function main(){
-      // Load local first
+    function main(){
       expenses = loadExpenses();
-      
-      // Show initial UI
       updateSortBtn();
-      updateSheetsStatus();
-      updateDebugPanel();
-      
-      // Load from Google Sheet and merge
-      tableBody.innerHTML = '<tr><td colspan="5" class="loading">Loading expenses from Google Sheet...</td></tr>';
-      await loadFromGoogleSheets();
-      
-      // Render final UI
       renderTable();
       renderStats();
-      
-      console.log('✅ Expense Tracker initialized with sheet data');
     }
-
-    // Start app
     main();
   </script>
 </body>
