@@ -330,6 +330,12 @@
       margin: 8px 0;
       font-family: monospace;
     }
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-style: italic;
+    }
     @media (max-width: 640px){
       .container {padding: 10px; }
       .summary, .category-summary {padding: 10px;}
@@ -419,7 +425,7 @@
         </tr>
       </thead>
       <tbody>
-        <!-- Data Rows Inserted Here -->
+        <tr><td colspan="5" class="loading">Loading expenses from Google Sheet...</td></tr>
       </tbody>
     </table>
     <div class="category-summary">
@@ -481,6 +487,78 @@
     let lastApiResponse = 'No request yet';
 
     /**
+     * Fetch ALL expenses from Google Sheet
+     */
+    async function fetchAllFromGoogleSheets() {
+      if (!GOOGLE_APPS_SCRIPT_URL) return [];
+      
+      try {
+        console.log('📥 Loading expenses from Google Sheet...');
+        const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'GET_ALL' })
+        });
+        
+        const result = await response.json();
+        lastApiResponse = JSON.stringify(result, null, 2);
+        document.getElementById('last-response').textContent = lastApiResponse;
+        
+        if (result.status === 'success' && Array.isArray(result.data)) {
+          console.log(`✅ Loaded ${result.data.length} expenses from Google Sheet`);
+          return result.data;
+        } else {
+          console.warn('No data from sheet or invalid response:', result);
+          return [];
+        }
+      } catch (error) {
+        console.error('❌ Failed to load from Google Sheet:', error);
+        return [];
+      }
+    }
+
+    /**
+     * Normalize sheet row to expense format
+     */
+    function normalizeExpense(row) {
+      return {
+        id: row.id || `sheet-${row.rowNumber || 0}-${row.date || Date.now()}`,
+        date: row.date || new Date().toISOString().slice(0, 10),
+        amount: Number(row.amount) || 0,
+        category: row.category || 'Other',
+        description: row.description || ''
+      };
+    }
+
+    /**
+     * Load and merge expenses from Google Sheet
+     */
+    async function loadFromGoogleSheets() {
+      try {
+        const sheetExpenses = await fetchAllFromGoogleSheets();
+        if (sheetExpenses.length === 0) return;
+
+        const normalized = sheetExpenses
+          .map(normalizeExpense)
+          .filter(exp => exp.amount > 0 && exp.category);
+
+        // De-duplicate: keep local if ID conflict
+        const localIds = new Set(expenses.map(e => e.id));
+        const merged = [
+          ...expenses,
+          ...normalized.filter(e => !localIds.has(e.id))
+        ];
+
+        expenses = merged;
+        saveExpenses();
+        console.log(`✅ Merged ${normalized.length} sheet expenses with ${expenses.length} total`);
+        showSuccess(`✅ Loaded ${sheetExpenses.length} expenses from Google Sheet!`);
+      } catch (error) {
+        console.warn('⚠️ Using local data only (sheet load failed)');
+      }
+    }
+
+    /**
      * Save expense to Google Sheet via Apps Script
      */
     async function saveToGoogleSheets(expense) {
@@ -494,11 +572,14 @@
         
         const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            action: 'ADD',
             date: expense.date,
             amount: expense.amount,
             category: expense.category,
-            description: expense.description
+            description: expense.description,
+            id: expense.id
           })
         });
 
@@ -542,16 +623,10 @@
       testResult.className = 'debug-status';
 
       try {
-        console.log('🧪 Testing Google Apps Script...');
-        
         const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
           method: 'POST',
-          body: JSON.stringify({
-            date: '2025-12-01',
-            amount: 0,
-            category: 'Test',
-            description: 'Connection test'
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'TEST' })
         });
 
         const result = await response.json();
@@ -594,7 +669,8 @@
       GOOGLE_APPS_SCRIPT_URL = url;
       localStorage.setItem('gasScriptUrl', url);
       updateDebugPanel();
-      showSuccess('✅ Script URL saved!');
+      updateSheetsStatus();
+      showSuccess('✅ Script URL saved! Now refresh page to load data.');
       console.log('✅ Google Apps Script URL configured');
     }
 
@@ -618,16 +694,13 @@
       const input = document.getElementById('script-url-input');
       
       if (GOOGLE_APPS_SCRIPT_URL) {
-        const url = GOOGLE_APPS_SCRIPT_URL;
-        const shortUrl = url.substring(0, 30) + '...' + url.substring(url.length - 15);
+        const shortUrl = GOOGLE_APPS_SCRIPT_URL.substring(0, 30) + '...' + GOOGLE_APPS_SCRIPT_URL.substring(GOOGLE_APPS_SCRIPT_URL.length - 15);
         urlEl.textContent = shortUrl;
         input.value = GOOGLE_APPS_SCRIPT_URL;
       } else {
         urlEl.textContent = 'Not configured';
         input.value = '';
       }
-
-      updateSheetsStatus();
     }
 
     /**
@@ -636,7 +709,7 @@
     function updateSheetsStatus() {
       const statusEl = document.getElementById('sheets-status');
       if (GOOGLE_APPS_SCRIPT_URL) {
-        statusEl.textContent = '✅ Connected';
+        statusEl.innerHTML = '✅ Connected <span style="font-size:0.8em;">(refresh to load)</span>';
         statusEl.style.color = '#21916d';
         statusEl.style.fontWeight = '600';
       } else {
@@ -649,7 +722,7 @@
     // ---- EXPENSE TRACKER LOGIC ----
     const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 });
     const LS_KEY = 'expenses-list-v1';
-    const categoryList = ['Housing','Food','Investment','Transportation','Entertainment','Healthcare','Other'];
+    const categoryList = ['Housing','Food','Bike','Fuel','Investment','Transportation','Entertainment','Healthcare','Other'];
 
     // --- State ---
     let expenses = [];
@@ -684,12 +757,12 @@
     function showSuccess(msg) {
       successMsg.textContent = msg;
       successMsg.style.display = 'block';
-      setTimeout(() => { successMsg.style.display = 'none'; }, 1850);
+      setTimeout(() => { successMsg.style.display = 'none'; }, 2500);
     }
     function showError(msg) {
       errorMsg.textContent = msg;
       errorMsg.style.display = 'block';
-      setTimeout(() => { errorMsg.style.display = 'none'; }, 2300);
+      setTimeout(() => { errorMsg.style.display = 'none'; }, 3000);
     }
     function getTodayStr() {
       const d = new Date();
@@ -700,18 +773,22 @@
       return `${d}-${m}-${y}`;
     }
     function saveExpenses() {
-      window._expensesMemoryStorage = window._expensesMemoryStorage || {};
-      window._expensesMemoryStorage[LS_KEY] = JSON.stringify(expenses);
+      localStorage.setItem(LS_KEY, JSON.stringify(expenses));
     }
     function loadExpenses() {
-      let data = window._expensesMemoryStorage && window._expensesMemoryStorage[LS_KEY];
-      if (data) return JSON.parse(data);
-      return [];
+      try {
+        const data = localStorage.getItem(LS_KEY);
+        return data ? JSON.parse(data) : [];
+      } catch (e) {
+        console.warn('LocalStorage corrupted, starting fresh');
+        return [];
+      }
     }
     function clearForm() {
       form.amount.value = '';
       form.desc.value = '';
       form.category.value = '';
+      form.amount.focus();
     }
 
     // ---- Table Rendering & Filtering ---
@@ -733,19 +810,21 @@
       const filtered = getFiltered();
       const sorted = getSorted(filtered);
       tableBody.innerHTML = '';
-      if(sorted.length === 0) {
-        let txt = filterCategory?'No expenses for this category yet.':'No expenses added yet.';
+      
+      if (sorted.length === 0) {
+        const txt = filterCategory ? 'No expenses for this category yet.' : 'No expenses added yet.';
         tableBody.innerHTML = `<tr><td colspan='5' class='empty-row'>${txt}</td></tr>`;
         return;
       }
-      sorted.forEach((exp, idx) => {
+      
+      sorted.forEach((exp) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${formatDate(exp.date)}</td>
           <td>${currencyFormatter.format(exp.amount)}</td>
           <td>${exp.category}</td>
           <td>${exp.description}</td>
-          <td><button class='table-action-btn' data-idx='${exp.id}'>Delete</button></td>
+          <td><button class='table-action-btn' data-id='${exp.id}'>Delete</button></td>
         `;
         tr.querySelector('.table-action-btn').onclick = () => confirmDelete(exp.id);
         tableBody.appendChild(tr);
@@ -759,25 +838,31 @@
       totalCountEl.textContent = filtered.length;
       const totalAmt = filtered.reduce((sum, item) => sum + Number(item.amount), 0);
       totalAmountEl.textContent = currencyFormatter.format(totalAmt);
+      
       let byCat = {};
-      filtered.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+Number(e.amount));
+      filtered.forEach(e => byCat[e.category] = (byCat[e.category] || 0) + Number(e.amount));
+      
       let maxCat = '-';
       let maxAmt = 0;
       for(const c of Object.keys(byCat)){
-        if(byCat[c]>maxAmt){maxCat=c;maxAmt=byCat[c];}
+        if(byCat[c] > maxAmt){ maxCat = c; maxAmt = byCat[c]; }
       }
       highestCategoryEl.textContent = maxCat;
+      
       renderPieChart(byCat);
     }
 
     function renderPieChart(byCat) {
       const labels = categoryList.filter(cat => byCat[cat] > 0);
       const data = labels.map(cat => byCat[cat]);
-      if(chartInstance){chartInstance.destroy();}
-      if(data.length===0){
+      
+      if(chartInstance) chartInstance.destroy();
+      
+      if(data.length === 0){
         categoryChartCanvas.parentNode.querySelector('.chartjs-render-monitor')?.remove();
         return;
       }
+      
       chartInstance = new Chart(categoryChartCanvas, {
         type: 'pie',
         data: {
@@ -785,15 +870,22 @@
           datasets: [{
             data: data,
             backgroundColor: [
-              '#1FB8CD', '#FFC185', '#B4413C', '#ECEBD5', '#5D878F', '#DB4545', '#D2BA4C', '#964325', '#944454', '#13343B'
+              '#1FB8CD', '#FFC185', '#B4413C', '#ECEBD5', '#5D878F', 
+              '#DB4545', '#D2BA4C', '#964325', '#944454', '#13343B'
             ],
           }]
         },
         options: {
-          plugins:{legend:{display:true,position:'bottom',labels:{font:{size:14}}}},
-          responsive:true,
-          maintainAspectRatio:false,
-          aspectRatio:1.9
+          plugins: {
+            legend: {
+              display: true,
+              position: 'bottom',
+              labels: { font: { size: 14 } }
+            }
+          },
+          responsive: true,
+          maintainAspectRatio: false,
+          aspectRatio: 1.9
         }
       });
       categoryChartCanvas.style.height = '200px';
@@ -810,6 +902,7 @@
         onCancel: closeModal
       });
     }
+    
     function deleteExpense(id) {
       expenses = expenses.filter(x => x.id !== id);
       saveExpenses();
@@ -817,6 +910,7 @@
       renderStats();
       showSuccess('Expense deleted');
     }
+    
     function handleClearAll() {
       openModal({
         title: 'Clear all expenses',
@@ -825,7 +919,7 @@
         confirmClass: 'btn-accent',
         onConfirm: () => {
           expenses = [];
-          saveExpenses();
+          localStorage.removeItem(LS_KEY);
           renderTable();
           renderStats();
           closeModal();
@@ -837,12 +931,7 @@
 
     // ---- Modal ---
     function openModal(opts) {
-      let content = '';
-      if (opts.customContent) {
-        content = opts.customContent;
-      } else {
-        content = `<div style='margin:12px 0 16px 0;'>${opts.desc||''}</div>`;
-      }
+      let content = opts.customContent || `<div style='margin:12px 0 16px 0;'>${opts.desc||''}</div>`;
       
       modalRoot.innerHTML = `<div class='modal-backdrop'>
         <div class='modal'>
@@ -852,23 +941,34 @@
           <button class='btn btn-secondary'>Cancel</button>
         </div>
       </div>`;
+      
       const box = modalRoot.querySelector('.modal');
-      box.querySelector('.btn').onclick = opts.onConfirm;
+      box.querySelector('.btn:not(.btn-secondary)').onclick = opts.onConfirm;
       box.querySelector('.btn-secondary').onclick = opts.onCancel || closeModal;
     }
-    function closeModal(){modalRoot.innerHTML='';}
+    
+    function closeModal(){ modalRoot.innerHTML = ''; }
 
     // ---- Sort & Filter ---
-    sortDateBtn.onclick = () => {currentSort='date';flipSortDir('date');updateSortBtn();renderTable();};
-    sortAmountBtn.onclick = () => {currentSort='amount';flipSortDir('amount');updateSortBtn();renderTable();};
-    function flipSortDir(field){
-      if(currentSort===field)sortDir*=-1;
-      else sortDir = field==='date' ? -1 : -1;
-    }
+    sortDateBtn.onclick = () => { 
+      currentSort = 'date'; 
+      if (currentSort === 'date') sortDir *= -1; else sortDir = -1;
+      updateSortBtn(); 
+      renderTable(); 
+    };
+    
+    sortAmountBtn.onclick = () => { 
+      currentSort = 'amount'; 
+      if (currentSort === 'amount') sortDir *= -1; else sortDir = -1;
+      updateSortBtn(); 
+      renderTable(); 
+    };
+    
     function updateSortBtn(){
-      sortDateBtn.classList.toggle('active', currentSort==='date');
-      sortAmountBtn.classList.toggle('active', currentSort==='amount');
+      sortDateBtn.classList.toggle('active', currentSort === 'date');
+      sortAmountBtn.classList.toggle('active', currentSort === 'amount');
     }
+    
     categoryFilter.onchange = function(){
       filterCategory = this.value;
       renderTable();
@@ -876,20 +976,27 @@
     };
 
     // ---- Add Expense ----
-    form.onsubmit = function(e) {
+    form.onsubmit = async function(e) {
       e.preventDefault();
+      
       const amount = form.amount.value.trim();
       const desc = form.desc.value.trim();
       const cat = form.category.value;
-      if(!amount || isNaN(amount) || Number(amount)<=0){
+      
+      if(!amount || isNaN(amount) || Number(amount) <= 0){
         showError('Amount must be a positive number');
-        form.amount.focus(); return;
+        form.amount.focus(); 
+        return;
       }
       if(!desc){
-        showError('Description is required'); form.desc.focus(); return;
+        showError('Description is required'); 
+        form.desc.focus(); 
+        return;
       }
       if(!cat){
-        showError('Please select a category'); form.category.focus(); return;
+        showError('Please select a category'); 
+        form.category.focus(); 
+        return;
       }
       
       const newExpense = {
@@ -905,11 +1012,12 @@
       renderTable();
       renderStats();
       clearForm();
-      showSuccess('Expense added locally! ✅');
+      showSuccess('Expense added! ✅');
       
-      // Sync to Google Sheet
+      // Sync to Google Sheet (fire and forget)
       saveToGoogleSheets(newExpense);
     };
+
     clearAllBtn.onclick = handleClearAll;
 
     // ---- Debug Panel Controls ----
@@ -925,14 +1033,27 @@
     testScriptBtn.onclick = testScriptConnection;
 
     // ------- Init ---------
-    function main(){
+    async function main(){
+      // Load local first
       expenses = loadExpenses();
+      
+      // Show initial UI
       updateSortBtn();
+      updateSheetsStatus();
+      updateDebugPanel();
+      
+      // Load from Google Sheet and merge
+      tableBody.innerHTML = '<tr><td colspan="5" class="loading">Loading expenses from Google Sheet...</td></tr>';
+      await loadFromGoogleSheets();
+      
+      // Render final UI
       renderTable();
       renderStats();
-      updateDebugPanel();
-      console.log('✅ Expense Tracker initialized');
+      
+      console.log('✅ Expense Tracker initialized with sheet data');
     }
+
+    // Start app
     main();
   </script>
 </body>
